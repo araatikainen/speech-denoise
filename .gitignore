@@ -1,0 +1,4 @@
+clean_*
+noisy_*
+*.wav
+*.zip
