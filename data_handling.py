@@ -1,24 +1,16 @@
-
-from typing import Union, List, Tuple
-
-import numpy as np
+from typing import Union
 from torch.utils.data import Dataset
 from pathlib import Path
 
-from utils import get_files_from_dir_with_pathlib, get_audio_file_data
+from utils import get_files_from_dir, get_audio_data
 
 
 class SpeechTrainDataset(Dataset):
     def __init__(self, root_dir: Union[str, Path],
                  split: str = 'noisy') \
             -> None:
-        """Pytorch Dataset class for training samples.
+        """Pytorch Dataset class for training samples."""
 
-        :param root_dir: Root directory of the dataset (should contain the clean and noicy).
-        :type root_dir: str or pathlib.Path
-        :param split: Split to use (clean or noisy), defaults to 'noisy'.
-        :type split: str
-        """
         self.root_dir = Path(root_dir)
         self.split = split
         self.load_data()
@@ -29,11 +21,11 @@ class SpeechTrainDataset(Dataset):
         noisy_train_dir = self.root_dir / (self.split + '_trainset_28spk_wav')
         clean_train_dir = self.root_dir / (self.split + '_trainset_28spk_wav')
 
-        noisy_train_files = get_files_from_dir_with_pathlib(noisy_train_dir)
-        clean_train_files = get_files_from_dir_with_pathlib(clean_train_dir)
+        noisy_train_files = get_files_from_dir(noisy_train_dir)
+        clean_train_files = get_files_from_dir(clean_train_dir)
 
-        self.noisy_train = [get_audio_file_data(f) for f in noisy_train_files]
-        self.clean_train = [get_audio_file_data(f) for f in clean_train_files]
+        self.noisy_train = [get_audio_data(f) for f in noisy_train_files]
+        self.clean_train = [get_audio_data(f) for f in clean_train_files]
 
 
     def __len__(self) -> int:
@@ -60,11 +52,11 @@ class SpeechTestDataset(Dataset):
         noisy_test_dir = self.root_dir / (self.split + '_testset_wav')
         clean_test_dir = self.root_dir / (self.split + '_testset_wav')
 
-        noisy_test_files = get_files_from_dir_with_pathlib(noisy_test_dir)
-        clean_test_files = get_files_from_dir_with_pathlib(clean_test_dir)
+        noisy_test_files = get_files_from_dir(noisy_test_dir)
+        clean_test_files = get_files_from_dir(clean_test_dir)
 
-        self.noisy_test = [get_audio_file_data(f) for f in noisy_test_files]
-        self.clean_test = [get_audio_file_data(f) for f in clean_test_files]
+        self.noisy_test = [get_audio_data(f) for f in noisy_test_files]
+        self.clean_test = [get_audio_data(f) for f in clean_test_files]
 
     def __len__(self) -> int:
         """Returns the length of the dataset."""
