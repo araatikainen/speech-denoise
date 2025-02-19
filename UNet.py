@@ -109,7 +109,7 @@ class UNet(nn.Module):
                         out_channels=out_channels,
                         kernel_size=3,
                         padding=1),
-            nn.ReLU()
+            nn.Sigmoid()
         )
 
     def forward(self, x):
