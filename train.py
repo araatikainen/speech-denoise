@@ -95,13 +95,6 @@ def test(device, model, test_loader):
     print(f"Test PSNR: {test_psnr}")
 
 
-def get_psnr(clean, denoised, max_pixel_value=1.0):
-    mse = F.mse_loss(denoised, clean, reduction='mean')  # Mean Squared Error
-    psnr = 10 * torch.log10(max_pixel_value**2 / mse)  # PSNR formula
-    return psnr.item()
-
-
-
 def main():
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
