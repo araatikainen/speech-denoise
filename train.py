@@ -4,6 +4,7 @@ import numpy as np
 import os
 
 from UNet import UNet
+from evaluation import get_psnr
 
 def train(device, model, train_loader, val_loader,
           epochs=200, lr=1e-3,
@@ -67,6 +68,7 @@ def test(device, model, test_loader):
     criterion = nn.MSELoss()
 
     test_losses = []
+    test_psnrs = []
 
     model.eval()
 
@@ -80,13 +82,15 @@ def test(device, model, test_loader):
             loss = criterion(preds, labels)
 
             test_losses.append(loss.item())
+            test_psnrs.append(get_psnr(preds.cpu(), labels.cpu()))
         
     test_loss = np.array(test_losses).mean()
+    test_psnr = np.array(test_psnrs).mean()
     print(f"Test loss: {test_loss}")
+    print(f"Test PSNR: {test_psnr}")
 
 
 def get_psnr(clean, denoised, max_pixel_value=1.0):
-    """Computes PSNR (Peak Signal-to-Noise Ratio) between clean and denoised images."""
     mse = F.mse_loss(denoised, clean, reduction='mean')  # Mean Squared Error
     psnr = 10 * torch.log10(max_pixel_value**2 / mse)  # PSNR formula
     return psnr.item()
