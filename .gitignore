@@ -3,3 +3,4 @@ noisy_*
 *.wav
 *.zip
 __pycache__
+traditional_results
