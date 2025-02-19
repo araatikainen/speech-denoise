@@ -2,3 +2,4 @@ clean_*
 noisy_*
 *.wav
 *.zip
+__pycache__
