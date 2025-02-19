@@ -2,8 +2,12 @@ import torch
 import torch.nn as nn
 import numpy as np
 import os
+from torch.utils.data import random_split
+from torch.utils.data import DataLoader
+import torch.nn.functional as F
 
 from UNet import UNet
+from dataset_class import SpeechTestDataset, SpeechTrainDataset
 from evaluation import get_psnr
 
 def train(device, model, train_loader, val_loader,
@@ -14,7 +18,7 @@ def train(device, model, train_loader, val_loader,
     criterion = nn.MSELoss()
     optimizer = torch.optim.Adam(params=model.parameters(), lr=lr)
     
-    for epoch in epochs:
+    for epoch in range(epochs):
 
         train_loss_epoch = []
         val_loss_epoch = []
@@ -24,6 +28,7 @@ def train(device, model, train_loader, val_loader,
         for i, batch in enumerate(train_loader):
             inputs, labels = batch
             inputs, labels = inputs.to(device), labels.to(device)
+            inputs, labels = inputs.unsqueeze(1), labels.unsqueeze(1)
 
             optimizer.zero_grad()
 
@@ -42,7 +47,7 @@ def train(device, model, train_loader, val_loader,
             for i, batch in enumerate(val_loader):
                 inputs, labels = batch
                 inputs, labels = inputs.to(device), labels.to(device)
-
+                inputs, labels = inputs.unsqueeze(1), labels.unsqueeze(1)
                 preds = model(inputs)
 
                 loss = criterion(preds, labels)
@@ -102,13 +107,24 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print("Using device: ", device)
 
-    train_loader = get_data_loader()
-    val_loader = get_data_loader()
-    test_loader = get_data_loader()
+    train_dataset = SpeechTrainDataset(root_dir='.')
+
+    # split the dataset into train and validation
+    train_size = int(0.9 * len(train_dataset))
+    val_size = len(train_dataset) - train_size
+
+    train_dataset, val_dataset = random_split(train_dataset, [train_size, val_size])
+
+    train_loader = DataLoader(train_dataset, shuffle=False)
+    val_loader = DataLoader(val_dataset, shuffle=False)
+
+    test_dataset = SpeechTestDataset(root_dir='.')
+    test_loader = DataLoader(test_dataset, shuffle=False)
 
     unet = UNet(in_channels=1,
                  out_channels=1,
                  init_channels=8)
+    unet.to(device)
     
     unet = train(device=device, model=unet,
                   train_loader=train_loader,
