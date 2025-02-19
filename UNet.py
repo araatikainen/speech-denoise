@@ -166,7 +166,8 @@ class UNet(nn.Module):
             nn.LeakyReLU(),
             nn.Conv2d(in_channels=2,
                         out_channels=out_channels,
-                        kernel_size=1)
+                        kernel_size=1),
+            nn.Sigmoid()
         )
 
     def forward(self, x):
