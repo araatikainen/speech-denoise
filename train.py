@@ -102,8 +102,8 @@ def main():
     val_loader = get_data_loader()
     test_loader = get_data_loader()
 
-    unet = UNet(in_channels=?,
-                 out_channels=?,
+    unet = UNet(in_channels=1,
+                 out_channels=1,
                  init_channels=8)
     
     unet = train(device=device, model=unet,
