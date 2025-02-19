@@ -87,7 +87,7 @@ class UpConvBlock(nn.Module):
                 nn.ConvTranspose2d(in_channels=in_channels,
                                     out_channels=out_channels,
                                     kernel_size=2,
-                                    stride=2),
+                                    stride=1),
                 nn.LeakyReLU()
             )
         else:
@@ -108,7 +108,7 @@ class UpConvBlock(nn.Module):
                 nn.ConvTranspose2d(in_channels=in_channels,
                                     out_channels=out_channels,
                                     kernel_size=2,
-                                    stride=2),
+                                    stride=1),
                 nn.LeakyReLU()
             )
 
@@ -137,14 +137,14 @@ class UNet(nn.Module):
 
         self.conv_1 = ConvBlock(in_channels=init_channels,
                                 out_channels=init_channels)
-        self.max_pool_1 = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.max_pool_1 = nn.MaxPool2d(kernel_size=2, stride=1)
         self.conv_2 = ConvBlock(in_channels=init_channels,
                                 out_channels=2 * init_channels)
-        self.max_pool_2 = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.max_pool_2 = nn.MaxPool2d(kernel_size=2, stride=1)
         self.conv_3 = ConvBlock(in_channels=2 * init_channels,
                                 out_channels=4 * init_channels,
                                 dropout=True)
-        self.max_pool_3 = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.max_pool_3 = nn.MaxPool2d(kernel_size=2, stride=1)
         
         self.up_conv_1 = UpConvBlock(in_channels=4 * init_channels,
                                     out_channels=4 * init_channels,
@@ -190,16 +190,35 @@ class UNet(nn.Module):
         x5 = self.up_conv_3(x4)
         
         x6 = torch.cat([x1_cat, x5], dim=1)
-
         x7 = self.conv_4(x6)
+
         out = self.out_conv(x7)
 
         return out
 
+def test_with_audio():
+    from utils import get_audio_data
+    from feature_extract import extract_mel_spectrogram
 
+    y, sr = get_audio_data("test_sound.wav")
+    mel_spectrogram = extract_mel_spectrogram(y, sr, n_mels=40)
+
+    print(mel_spectrogram.shape)
+
+    input_spectrogram = torch.from_numpy(mel_spectrogram)
+    input_spectrogram = input_spectrogram.unsqueeze(0).unsqueeze(0)
+
+    model = UNet(in_channels=1, out_channels=1, init_channels=4)
+    output = model(input_spectrogram)
+    print("Model output:", output.shape)
+
+    
 
 if __name__ == "__main__":
-    model = UNet(in_channels=1, out_channels=1, init_channels=8)
-    sample_input = torch.randn(1, 1, 512, 512)
+    from random import randint
+    model = UNet(in_channels=1, out_channels=1, init_channels=4)
+    sample_input = torch.randn(1, 1, randint(8,1024), randint(8,1024))
+    print("Input:", sample_input.shape)
     output = model(sample_input)
-    print(output.shape)
+    print("Output:", output.shape, "\n")
+    test_with_audio()
