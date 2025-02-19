@@ -13,3 +13,7 @@ ADDITIONAL TODO (traditional methods)
 - algorithm
 - data post-processing
 - testing and evaluation
+
+
+
+Model acquired from https://www.mdpi.com/2079-9292/12/14/3052
