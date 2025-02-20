@@ -9,10 +9,13 @@ from tqdm import tqdm
 from torch.nn.parallel import DataParallel
 import time
 from datetime import datetime, timedelta
+import soundfile as sf
+import librosa
+from torch.optim.lr_scheduler import MultiStepLR
 
-#from UNet import UNet
+from UNet import UNet
 #from UNet_V1 import UNet
-from UNet_tmp import UNet
+#from UNet_tmp import UNet
 from dataset_class import SpeechTestDataset, SpeechTrainDataset
 from evaluation import get_psnr
 
@@ -25,22 +28,24 @@ def train(device, model, train_loader, val_loader,
           epochs=200, lr=1e-3,
           save_path="saved_models"
           ):
-    training_start_time = time.time()
+    #training_start_time = time.time()
     if torch.cuda.device_count() > 1:
         print(f"Using {torch.cuda.device_count()} GPUs!")
         model = DataParallel(model)
 
     criterion = nn.MSELoss()
     optimizer = torch.optim.Adam(params=model.parameters(), lr=lr)
+
+    scheduler = MultiStepLR(optimizer=optimizer, milestones=[100], gamma=0.1)
     
-    for epoch in range(epochs):
-        epoch_start_time = time.time()
+    for epoch in tqdm(range(epochs)):
+        #epoch_start_time = time.time()
         train_loss_epoch = []
         val_loss_epoch = []
 
         model.train()
 
-        for i, batch in enumerate(train_loader):
+        for batch in train_loader:
             inputs, labels = batch
             inputs, labels = inputs.to(device), labels.to(device)
             inputs, labels = inputs.unsqueeze(1), labels.unsqueeze(1)
@@ -59,7 +64,7 @@ def train(device, model, train_loader, val_loader,
         model.eval()
 
         with torch.no_grad():
-            for i, batch in enumerate(val_loader):
+            for batch in val_loader:
                 inputs, labels = batch
                 inputs, labels = inputs.to(device), labels.to(device)
                 inputs, labels = inputs.unsqueeze(1), labels.unsqueeze(1)
@@ -71,10 +76,14 @@ def train(device, model, train_loader, val_loader,
 
         train_loss = np.array(train_loss_epoch).mean()
         val_loss = np.array(val_loss_epoch).mean()
-        print('\n', f" *** Epoch {epoch:03d} ***\n Train loss: {train_loss:.3f}\n Validation loss: {val_loss:.3f}\n Time: {format_time(time.time() - epoch_start_time)}")
+
+        scheduler.step()
+
+        if (epoch + 1) % 5 == 0:
+            print('\n\n', f" *** Epoch {epoch:03d} ***\n Train loss: {train_loss:.3f}\n Validation loss: {val_loss:.3f}\n Learning rate: {optimizer.param_groups[0]['lr']}") #\n Time: {format_time(time.time() - epoch_start_time)}
             
-    print("Training finished.")
-    print("Total time: ", format_time(time.time() - training_start_time))
+    #print("Training finished.")
+    #print("Total time: ", format_time(time.time() - training_start_time))
 
     if not os.path.exists(save_path):
         os.makedirs(save_path)
@@ -156,17 +165,17 @@ def main():
 
     train_dataset, val_dataset = random_split(train_dataset, [train_size, val_size])
 
-    batch_size = 16  # Base batch
+    batch_size = 32  # Base batch
 
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False, collate_fn=collate_fn)
-    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, collate_fn=collate_fn)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 
     test_dataset = SpeechTestDataset(root_dir='.')
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, collate_fn=collate_fn)
     print("Data loaded. Train size: ", len(train_dataset), " Val size: ", len(val_dataset), " Test size: ", len(test_dataset))
     unet = UNet(in_channels=1,
                  out_channels=1,
-                 init_channels=8)
+                 init_channels=16)
     unet.to(device)
     
     unet = train(device=device, model=unet,
@@ -181,3 +190,32 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+    # load the trained model
+    device = torch.device("cuda")
+
+    unet = UNet(in_channels=1,
+                 out_channels=1,
+                 init_channels=8) 
+    if torch.cuda.device_count() > 1:
+        print(f"Using {torch.cuda.device_count()} GPUs!")
+        unet = DataParallel(unet)
+
+    unet.load_state_dict(torch.load("saved_models/last_model.pth"))
+
+    # Load the test dataset
+    test_dataset = SpeechTestDataset(root_dir='.', features=True)
+    test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False, collate_fn=collate_fn)
+
+    # Test the unet
+    for i, batch in enumerate(test_loader):
+        inputs, labels = batch
+        inputs, labels = inputs.to(device), labels.to(device)
+        inputs, labels = inputs.unsqueeze(1), labels.unsqueeze(1)
+        preds = unet(inputs)
+        print(i)
+        if i == 10:
+            break
+
+    
+    print("Model testing finished.")

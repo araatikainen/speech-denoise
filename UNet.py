@@ -167,7 +167,7 @@ class UNet(nn.Module):
             nn.Conv2d(in_channels=2,
                         out_channels=out_channels,
                         kernel_size=1),
-            nn.Sigmoid()
+            nn.ReLU()
         )
 
     def forward(self, x):
