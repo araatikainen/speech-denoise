@@ -2,15 +2,16 @@ import pathlib
 import os
 import numpy as np
 import librosa
-from typing import Optional
+from typing import List, Optional
+
 from utils import get_audio_files, get_audio_data
 
 
 def extract_mel_spectrogram(audio_signal: np.ndarray,
-                        sr: int = 16000,
+                        sr: int = 48000,
                         n_mels: int = 13,
                         n_fft: Optional[int] = 2048,
-                        hop_length: Optional[int] = 1024,
+                        hop_length: Optional[int] = 512,
                         window: Optional[str] = 'hamm') \
         -> np.ndarray:
     """Extracts and returns the mel spectrogram from the `audio_signal` signal."""
@@ -27,10 +28,21 @@ def extract_mel_spectrogram(audio_signal: np.ndarray,
     return mel_spectrogram
 
 
+def split_spectrum(mel_spectrogram: np.ndarray, seq_len: int = 60) -> List[np.ndarray]:
+    """Splits the mel spectrogram into smaller sequences of length `seq_len`."""
+
+    sequences = []
+    for i in range(0, mel_spectrogram.shape[1], seq_len):
+        seq = mel_spectrogram[:, i:i + seq_len]
+        if seq.shape[1] == seq_len:
+            sequences.append(seq)
+    return sequences
+
+
 def main(dataset_root: pathlib.Path):
     splits = ["trainset_28spk_wav", "testset_wav"]
     prefixes = ["clean_", "noisy_"]
-    
+    seq_len = 60
     # Extract features for each split
     for prefix in prefixes:
         for split in splits:
@@ -54,6 +66,10 @@ def main(dataset_root: pathlib.Path):
                     y, sr = get_audio_data(audio_file)
                     mel_spec = extract_mel_spectrogram(y, sr)
                     np.save(output_dir / f"{audio_file.stem}.npy", mel_spec)
+
+                    """for i, sequence in enumerate(split_spectrum(mel_spec, seq_len)):
+                        file_name = f"{audio_file.stem}_{i}.npy"
+                        np.save(output_dir / file_name, sequence)"""
             else:
                 print(f"Skipping missing directory: {dataset_path}")
 
