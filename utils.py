@@ -24,7 +24,7 @@ def get_audio_data(audio_file: Union[str, pathlib.Path]) -> Tuple[np.ndarray, fl
     """Loads and returns the audio data from the `audio_file`. """
     # TODO add data normalization
 
-    return librosa.core.load(path=audio_file, sr=None, mono=True)
+    return librosa.core.load(path=audio_file, sr=44500, mono=True) # mono=True
 
 
 def test_utils():

@@ -22,21 +22,27 @@ def extract_mel_spectrogram(audio_signal: np.ndarray,
                                                     n_mels=n_mels,
                                                     n_fft=n_fft,
                                                     hop_length=hop_length,
-                                                    window=window)
-
+                                                    window=window,
+                                                    )
+    
+    #mel_spectrogram = mel_spectrogram.astype(np.uint16)
+    #max_uint32 = np.iinfo(np.uint32).max
+    #mel_spectrogram = mel_spectrogram.astype(np.float32) / max_uint32
+    mel_spectrogram = mel_spectrogram[:, :-1]
     # Return the Mel spectrogram
     return mel_spectrogram
 
 
-def split_spectrum(mel_spectrogram: np.ndarray, seq_len: int = 60) -> List[np.ndarray]:
-    """Splits the mel spectrogram into smaller sequences of length `seq_len`."""
+def split_spectrum(audio_data: np.ndarray, sr:int = 44500 ) -> List[np.ndarray]:
+    """Splits the mel spectrogram into 1s segments."""
 
-    sequences = []
-    for i in range(0, mel_spectrogram.shape[1], seq_len):
-        seq = mel_spectrogram[:, i:i + seq_len]
-        if seq.shape[1] == seq_len:
-            sequences.append(seq)
-    return sequences
+    segments = []
+
+    for i in range(0, audio_data.shape[0], sr):
+        segment = audio_data[i:i + sr]
+        if segment.shape[0] == sr:
+            segments.append(segment)
+    return segments
 
 
 def main(dataset_root: pathlib.Path):
@@ -62,14 +68,28 @@ def main(dataset_root: pathlib.Path):
                 
                 # Extract features for each audio file
                 print(f'Extracting features from {dataset_path} to {output_dir}')
+                #mel_specs = []
                 for audio_file in audio_paths:
                     y, sr = get_audio_data(audio_file)
-                    mel_spec = extract_mel_spectrogram(y, sr)
-                    np.save(output_dir / f"{audio_file.stem}.npy", mel_spec)
 
-                    """for i, sequence in enumerate(split_spectrum(mel_spec, seq_len)):
+                    if split == "testset_wav":
+                        mel_spec = extract_mel_spectrogram(y, sr)
+                        file_name = f"{audio_file.stem}.npy"
+                        np.save(output_dir / file_name, mel_spec)
+                        continue
+                    
+                    segments = split_spectrum(y)
+                    for i, segment in enumerate(segments):
                         file_name = f"{audio_file.stem}_{i}.npy"
-                        np.save(output_dir / file_name, sequence)"""
+                        mel_spec = extract_mel_spectrogram(segment, sr)
+                        np.save(output_dir / file_name, mel_spec)
+                        #mel_specs.append(mel_spec)
+                # get min and max values
+                # Compute min and max safely without converting to a single NumPy array
+                #mel_min = min(spec.min() for spec in mel_specs)
+                #mel_max = max(spec.max() for spec in mel_specs)
+
+                #print(f"Min: {mel_min}, Max: {mel_max}")
             else:
                 print(f"Skipping missing directory: {dataset_path}")
 
