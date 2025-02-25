@@ -8,12 +8,12 @@ from utils import get_audio_files, get_audio_data
 
 
 def extract_mel_spectrogram(audio_signal: np.ndarray,
-                        sr: int = 48000,
-                        n_mels: int = 13,
+                        sr: int = 44500,
+                        n_mels: int = 64, #old 13
                         n_fft: Optional[int] = 2048,
                         hop_length: Optional[int] = 512,
-                        window: Optional[str] = 'hamm') \
-        -> np.ndarray:
+                        window: Optional[str] = 'hann') \
+        -> np.ndarray: # old 'hamm'
     """Extracts and returns the mel spectrogram from the `audio_signal` signal."""
 
     # Compute the Mel spectrogram
@@ -24,24 +24,29 @@ def extract_mel_spectrogram(audio_signal: np.ndarray,
                                                     hop_length=hop_length,
                                                     window=window,
                                                     )
-    
+    # convert to log scale
+    log_mel_spectrogram = librosa.power_to_db(mel_spectrogram, ref=np.max)
+    # Normalize the Mel spectrogram
+    # Normalize to zero mean, unit variance
+    mean = np.mean(log_mel_spectrogram)
+    std = np.std(log_mel_spectrogram)
+    normalized_spectrogram = (log_mel_spectrogram - mean) / (std + 1e-6)  # Avoid division by zero
+
+
     #mel_spectrogram = mel_spectrogram.astype(np.uint16)
     #max_uint32 = np.iinfo(np.uint32).max
     #mel_spectrogram = mel_spectrogram.astype(np.float32) / max_uint32
-    mel_spectrogram = mel_spectrogram[:, :-1]
+    mel_spectrogram = mel_spectrogram[:, :-1] # old_model
     # Return the Mel spectrogram
-    return mel_spectrogram
+    return normalized_spectrogram
 
 
-def split_spectrum(audio_data: np.ndarray, sr:int = 44500 ) -> List[np.ndarray]:
-    """Splits the mel spectrogram into 1s segments."""
-
-    segments = []
-
-    for i in range(0, audio_data.shape[0], sr):
-        segment = audio_data[i:i + sr]
-        if segment.shape[0] == sr:
-            segments.append(segment)
+def split_spectrum(audio_data: np.ndarray, sr: int = 44500, overlap: float = 0.5) -> List[np.ndarray]:
+    """Splits the mel spectrogram into overlapping segments."""
+    segment_length = sr
+    step = int(segment_length * (1 - overlap))  # Overlap by 50%
+    
+    segments = [audio_data[i:i + segment_length] for i in range(0, len(audio_data) - segment_length, step)]
     return segments
 
 

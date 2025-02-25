@@ -34,7 +34,7 @@ def train(device, model, train_loader, val_loader,
         model = DataParallel(model)
 
     criterion = nn.MSELoss()
-    optimizer = torch.optim.Adam(params=model.parameters(), lr=lr)
+    optimizer = torch.optim.AdamW(params=model.parameters(), lr=lr, weight_decay=1e-5)
 
     scheduler = MultiStepLR(optimizer=optimizer, milestones=[100], gamma=0.1)
     
@@ -79,9 +79,10 @@ def train(device, model, train_loader, val_loader,
 
         scheduler.step()
 
-        if (epoch + 1) % 5 == 0:
-            print('\n\n', f" *** Epoch {epoch:03d} ***\n Train loss: {train_loss:.3f}\n Validation loss: {val_loss:.3f}\n Learning rate: {optimizer.param_groups[0]['lr']}") #\n Time: {format_time(time.time() - epoch_start_time)}
-            
+        if epoch < 10:
+            print('\n\n', f" *** Epoch {epoch:03d} ***\n Train loss: {train_loss:.3f}\n Validation loss: {val_loss:.3f}\n Learning rate: {optimizer.param_groups[0]['lr']}")
+        elif epoch % 5 == 0:
+            print('\n\n', f" *** Epoch {epoch:03d} ***\n Train loss: {train_loss:.3f}\n Validation loss: {val_loss:.3f}\n Learning rate: {optimizer.param_groups[0]['lr']}")
     #print("Training finished.")
     #print("Total time: ", format_time(time.time() - training_start_time))
 
@@ -175,7 +176,7 @@ def main():
     print("Data loaded. Train size: ", len(train_dataset), " Val size: ", len(val_dataset), " Test size: ", len(test_dataset))
     unet = UNet(in_channels=1,
                  out_channels=1,
-                 init_channels=16)
+                 init_channels=32)
     unet.to(device)
     
     unet = train(device=device, model=unet,
@@ -190,32 +191,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-    # load the trained model
-    device = torch.device("cuda")
-
-    unet = UNet(in_channels=1,
-                 out_channels=1,
-                 init_channels=8) 
-    if torch.cuda.device_count() > 1:
-        print(f"Using {torch.cuda.device_count()} GPUs!")
-        unet = DataParallel(unet)
-
-    unet.load_state_dict(torch.load("saved_models/last_model.pth"))
-
-    # Load the test dataset
-    test_dataset = SpeechTestDataset(root_dir='.', features=True)
-    test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False, collate_fn=collate_fn)
-
-    # Test the unet
-    for i, batch in enumerate(test_loader):
-        inputs, labels = batch
-        inputs, labels = inputs.to(device), labels.to(device)
-        inputs, labels = inputs.unsqueeze(1), labels.unsqueeze(1)
-        preds = unet(inputs)
-        print(i)
-        if i == 10:
-            break
-
-    
-    print("Model testing finished.")
